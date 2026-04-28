@@ -8,11 +8,12 @@ import { Play, Pause, RotateCcw, Volume2, VolumeX, Maximize2, X, Music2 } from "
 import { toast } from "sonner";
 
 type Phase = "focus" | "break";
-const sounds = [
-  { id: "none", label: "Silence", url: null as string | null },
-  { id: "lofi", label: "Lo-fi", url: "https://cdn.pixabay.com/audio/2022/05/27/audio_1808fbf07a.mp3" },
-  { id: "rain", label: "Rain", url: "https://cdn.pixabay.com/audio/2022/03/10/audio_2dde668ca0.mp3" },
-  { id: "noise", label: "White noise", url: "synth:noise" },
+type SoundKind = "none" | "lofi" | "rain" | "noise";
+const sounds: { id: SoundKind; label: string }[] = [
+  { id: "none", label: "Silence" },
+  { id: "lofi", label: "Lo-fi" },
+  { id: "rain", label: "Rain" },
+  { id: "noise", label: "White noise" },
 ];
 
 const Focus = () => {
