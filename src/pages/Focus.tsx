@@ -4,7 +4,7 @@ import { PageHeader } from "@/components/focus/PageHeader";
 import { SurfaceCard, SectionLabel } from "@/components/focus/Card";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
-import { Play, Pause, RotateCcw, Volume2, VolumeX, Maximize2, Minimize2 } from "lucide-react";
+import { Play, Pause, RotateCcw, Volume2, VolumeX, Maximize2 } from "lucide-react";
 import { toast } from "sonner";
 
 type Phase = "focus" | "break";
@@ -21,7 +21,6 @@ const Focus = () => {
   const [phase, setPhase] = useState<Phase>("focus");
   const [secondsLeft, setSecondsLeft] = useState(25 * 60);
   const [running, setRunning] = useState(false);
-  const [deepMode, setDeepMode] = useState(false);
   const [sound, setSound] = useState("none");
   const [muted, setMuted] = useState(false);
   const intervalRef = useRef<number | null>(null);
@@ -87,47 +86,16 @@ const Focus = () => {
     </div>
   );
 
-  // Auto-start when entering deep mode; Esc to exit
-  useEffect(() => {
-    if (!deepMode) return;
-    setRunning(true);
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setDeepMode(false);
-      if (e.key === " ") { e.preventDefault(); setRunning((r) => !r); }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [deepMode]);
+  const timerRef = useRef<HTMLDivElement | null>(null);
 
   const enterDeep = () => {
     if (secondsLeft === 0) setSecondsLeft(focusMin * 60);
-    setDeepMode(true);
+    setRunning(true);
+    requestAnimationFrame(() => {
+      timerRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+    toast.success("Focus session started");
   };
-
-  if (deepMode) {
-    return (
-      <div className="fixed inset-0 z-50 bg-graphite text-primary-foreground flex flex-col items-center justify-center gap-12 p-6">
-        <span className="text-[10px] tracking-[0.3em] uppercase text-primary-foreground/60">
-          Deep Focus Mode · {phase === "focus" ? "Focus" : "Break"} · Space to pause · Esc to exit
-        </span>
-        <div className="font-serif-display text-[10rem] md:text-[14rem] tabular-nums leading-none">
-          {mm}:{ss}
-        </div>
-        <div className="flex gap-3">
-          <Button size="lg" onClick={() => setRunning((r) => !r)} className="rounded-full bg-primary-foreground text-graphite hover:bg-primary-foreground/90 px-8">
-            {running ? <Pause className="size-4 mr-2" /> : <Play className="size-4 mr-2" />}
-            {running ? "Pause" : "Start"}
-          </Button>
-          <Button size="lg" variant="outline" onClick={reset} className="rounded-full bg-transparent border-primary-foreground/30 text-primary-foreground hover:bg-primary-foreground/10">
-            <RotateCcw className="size-4" />
-          </Button>
-          <Button size="lg" variant="outline" onClick={() => { setRunning(false); setDeepMode(false); }} className="rounded-full bg-transparent border-primary-foreground/30 text-primary-foreground hover:bg-primary-foreground/10">
-            <Minimize2 className="size-4 mr-2" /> Exit
-          </Button>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <AppShell>
@@ -143,7 +111,9 @@ const Focus = () => {
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 md:gap-6">
-        <SurfaceCard className="lg:col-span-8 py-12">{TimerCore}</SurfaceCard>
+        <div ref={timerRef} className="lg:col-span-8">
+          <SurfaceCard className="py-12">{TimerCore}</SurfaceCard>
+        </div>
 
         <div className="lg:col-span-4 flex flex-col gap-5 md:gap-6">
           <SurfaceCard>
