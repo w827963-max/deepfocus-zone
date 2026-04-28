@@ -64,9 +64,33 @@ const Index = () => {
               <span className="font-serif-display text-xl">FocusHub</span>
             </div>
             <h1 className="text-3xl md:text-4xl font-medium tracking-tight text-graphite font-serif-display">
-              {greeting()}, Elena.
+              {greeting()}, {displayName}.
             </h1>
             <p className="text-graphite-light text-sm">{date} — let's keep the streak alive.</p>
+
+            {needsName && (
+              <form
+                onSubmit={saveName}
+                className="mt-4 flex flex-col sm:flex-row gap-2 sm:items-center bg-surface border border-border/60 rounded-2xl p-3 shadow-soft max-w-lg"
+              >
+                <span className="text-sm text-graphite-light px-2">What should we call you?</span>
+                <Input
+                  value={nameInput}
+                  onChange={(e) => setNameInput(e.target.value)}
+                  placeholder="Your name"
+                  className="rounded-full bg-stone border-transparent h-9 flex-1"
+                  maxLength={40}
+                />
+                <Button
+                  type="submit"
+                  disabled={savingName || !nameInput.trim()}
+                  className="rounded-full h-9 bg-graphite hover:bg-graphite/90 text-primary-foreground"
+                >
+                  {savingName && <Loader2 className="size-4 animate-spin mr-2" />}
+                  Save
+                </Button>
+              </form>
+            )}
           </div>
           <Button className="bg-graphite hover:bg-graphite/90 text-primary-foreground rounded-full px-6 py-6 text-sm font-medium shadow-soft">
             <Sparkles className="size-4 mr-2" />
