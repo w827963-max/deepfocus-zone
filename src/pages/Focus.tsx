@@ -22,7 +22,7 @@ const Focus = () => {
   const [phase, setPhase] = useState<Phase>("focus");
   const [secondsLeft, setSecondsLeft] = useState(25 * 60);
   const [running, setRunning] = useState(false);
-  const [sound, setSound] = useState("none");
+  const [sound, setSound] = useState<SoundKind>("none");
   const [muted, setMuted] = useState(false);
   const [volume, setVolume] = useState(50); // 0-100
   const [soundPaused, setSoundPaused] = useState(false);
