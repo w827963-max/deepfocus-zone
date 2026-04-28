@@ -4,7 +4,7 @@ import { PageHeader } from "@/components/focus/PageHeader";
 import { SurfaceCard, SectionLabel } from "@/components/focus/Card";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
-import { Play, Pause, RotateCcw, Volume2, VolumeX, Maximize2 } from "lucide-react";
+import { Play, Pause, RotateCcw, Volume2, VolumeX, Maximize2, X, Music2 } from "lucide-react";
 import { toast } from "sonner";
 
 type Phase = "focus" | "break";
@@ -23,9 +23,13 @@ const Focus = () => {
   const [running, setRunning] = useState(false);
   const [sound, setSound] = useState("none");
   const [muted, setMuted] = useState(false);
+  const [volume, setVolume] = useState(50); // 0-100
+  const [soundPaused, setSoundPaused] = useState(false);
   const intervalRef = useRef<number | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const noiseRef = useRef<{ ctx: AudioContext; gain: GainNode; src: AudioBufferSourceNode } | null>(null);
+
+  const effectiveGain = (vol: number) => (muted ? 0 : (vol / 100) * 0.4);
 
   const stopSound = () => {
     if (audioRef.current) {
@@ -43,6 +47,7 @@ const Focus = () => {
   const playSound = (id: string) => {
     stopSound();
     setSound(id);
+    setSoundPaused(false);
     if (id === "none") return;
     const entry = sounds.find((s) => s.id === id);
     if (!entry || !entry.url) return;
@@ -58,7 +63,7 @@ const Focus = () => {
       src.buffer = buffer;
       src.loop = true;
       const gain = ctx.createGain();
-      gain.gain.value = muted ? 0 : 0.12;
+      gain.gain.value = effectiveGain(volume);
       src.connect(gain).connect(ctx.destination);
       src.start();
       noiseRef.current = { ctx, gain, src };
@@ -67,7 +72,7 @@ const Focus = () => {
 
     const audio = new Audio(entry.url);
     audio.loop = true;
-    audio.volume = 0.5;
+    audio.volume = volume / 100;
     audio.muted = muted;
     audioRef.current = audio;
     audio.play().catch((err) => {
@@ -76,10 +81,43 @@ const Focus = () => {
     });
   };
 
+  const togglePause = () => {
+    if (sound === "none") return;
+    if (soundPaused) {
+      // resume
+      if (audioRef.current) {
+        audioRef.current.play().catch(() => {});
+      } else if (noiseRef.current) {
+        noiseRef.current.ctx.resume();
+      } else {
+        // noise was fully torn down — restart
+        playSound(sound);
+        return;
+      }
+      setSoundPaused(false);
+    } else {
+      if (audioRef.current) audioRef.current.pause();
+      if (noiseRef.current) noiseRef.current.ctx.suspend();
+      setSoundPaused(true);
+    }
+  };
+
+  const closeSoundPlayer = () => {
+    stopSound();
+    setSound("none");
+    setSoundPaused(false);
+  };
+
+  // Apply volume / mute to active sound
   useEffect(() => {
-    if (audioRef.current) audioRef.current.muted = muted;
-    if (noiseRef.current) noiseRef.current.gain.gain.value = muted ? 0 : 0.12;
-  }, [muted]);
+    if (audioRef.current) {
+      audioRef.current.muted = muted;
+      audioRef.current.volume = volume / 100;
+    }
+    if (noiseRef.current) {
+      noiseRef.current.gain.gain.value = effectiveGain(volume);
+    }
+  }, [muted, volume]);
 
   useEffect(() => () => stopSound(), []);
 
@@ -210,6 +248,42 @@ const Focus = () => {
           </SurfaceCard>
         </div>
       </div>
+
+      {sound !== "none" && (
+        <div className="fixed bottom-6 right-6 z-40 w-[300px] rounded-2xl border border-border bg-card/95 backdrop-blur-xl shadow-2xl p-4 animate-in fade-in slide-in-from-bottom-4">
+          <div className="flex items-center gap-3">
+            <div className="size-10 rounded-xl bg-moss-light text-moss flex items-center justify-center shrink-0">
+              <Music2 className="size-5" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-[10px] tracking-[0.2em] uppercase text-graphite-light">Now playing</div>
+              <div className="text-sm font-medium text-foreground truncate">
+                {sounds.find((s) => s.id === sound)?.label}
+              </div>
+            </div>
+            <Button size="icon" variant="ghost" onClick={closeSoundPlayer} className="rounded-full size-8 shrink-0">
+              <X className="size-4" />
+            </Button>
+          </div>
+
+          <div className="flex items-center gap-2 mt-4">
+            <Button size="icon" onClick={togglePause} className="rounded-full bg-graphite hover:bg-graphite/90 size-9 shrink-0">
+              {soundPaused ? <Play className="size-4" /> : <Pause className="size-4" />}
+            </Button>
+            <Button size="icon" variant="ghost" onClick={() => setMuted((m) => !m)} className="rounded-full size-9 shrink-0">
+              {muted || volume === 0 ? <VolumeX className="size-4" /> : <Volume2 className="size-4" />}
+            </Button>
+            <Slider
+              value={[muted ? 0 : volume]}
+              min={0}
+              max={100}
+              step={1}
+              onValueChange={(v) => { setVolume(v[0]); if (muted && v[0] > 0) setMuted(false); }}
+              className="flex-1"
+            />
+          </div>
+        </div>
+      )}
     </AppShell>
   );
 };
