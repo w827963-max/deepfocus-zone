@@ -335,14 +335,48 @@ const Focus = () => {
 
   const timerRef = useRef<HTMLDivElement | null>(null);
 
-  const enterDeep = () => {
+  const enterDeep = async () => {
     if (secondsLeft === 0) setSecondsLeft(focusMin * 60);
+    setDeepMode(true);
     setRunning(true);
-    requestAnimationFrame(() => {
-      timerRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    // Wait for overlay to mount, then request fullscreen on it
+    requestAnimationFrame(async () => {
+      const el = deepRef.current;
+      if (!el) return;
+      try {
+        if (el.requestFullscreen) await el.requestFullscreen();
+        else if ((el as any).webkitRequestFullscreen) await (el as any).webkitRequestFullscreen();
+      } catch (err) {
+        console.warn("Fullscreen denied:", err);
+      }
     });
-    toast.success("Focus session started");
   };
+
+  const exitDeep = async () => {
+    setDeepMode(false);
+    if (document.fullscreenElement) {
+      try { await document.exitFullscreen(); } catch {}
+    }
+  };
+
+  // Sync state if user presses Esc to leave fullscreen
+  useEffect(() => {
+    const onChange = () => {
+      if (!document.fullscreenElement && deepMode) setDeepMode(false);
+    };
+    document.addEventListener("fullscreenchange", onChange);
+    return () => document.removeEventListener("fullscreenchange", onChange);
+  }, [deepMode]);
+
+  // Keyboard: Space to play/pause while in deep mode
+  useEffect(() => {
+    if (!deepMode) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === " ") { e.preventDefault(); setRunning((r) => !r); }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [deepMode]);
 
   return (
     <AppShell>
