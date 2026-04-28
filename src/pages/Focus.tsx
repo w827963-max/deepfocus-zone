@@ -4,7 +4,7 @@ import { PageHeader } from "@/components/focus/PageHeader";
 import { SurfaceCard, SectionLabel } from "@/components/focus/Card";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
-import { Play, Pause, RotateCcw, Volume2, VolumeX, Maximize2 } from "lucide-react";
+import { Play, Pause, RotateCcw, Volume2, VolumeX, Maximize2, X, Music2 } from "lucide-react";
 import { toast } from "sonner";
 
 type Phase = "focus" | "break";
