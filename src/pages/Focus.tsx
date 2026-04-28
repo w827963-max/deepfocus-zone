@@ -234,18 +234,7 @@ const Focus = () => {
         hatStep++;
       }, 400);
 
-      // --- Vinyl crackle bed ---
-      const noise = ctx.createBufferSource();
-      noise.buffer = buildNoiseBuffer(ctx, 3);
-      noise.loop = true;
-      const noiseGain = ctx.createGain();
-      noiseGain.gain.value = 0.025;
-      const noiseHp = ctx.createBiquadFilter();
-      noiseHp.type = "highpass";
-      noiseHp.frequency.value = 2000;
-      noise.connect(noiseHp).connect(noiseGain).connect(masterGain);
-      noise.start();
-      nodes.push(noise);
+      // (Vinyl crackle removed — was reading as background hiss)
 
       audioCtxRef.current = { ctx, masterGain, nodes, timers: [chordTimer, kickTimer, hatTimer] };
       return;
