@@ -469,6 +469,37 @@ const Focus = () => {
           </div>
         </div>
       )}
+
+      {/* Deep Focus full-screen overlay — themed via design tokens (follows light/dark) */}
+      <div
+        ref={deepRef}
+        className={`${deepMode ? "fixed inset-0 z-[100] flex" : "hidden"} bg-background text-foreground flex-col items-center justify-center gap-12 p-6`}
+      >
+        <span className="text-[10px] tracking-[0.3em] uppercase text-muted-foreground">
+          Deep Focus · {phase === "focus" ? "Focus" : "Break"} · Space to pause · Esc to exit
+        </span>
+        <div className="relative">
+          <div className="font-serif-display text-[10rem] md:text-[14rem] tabular-nums leading-none text-foreground">
+            {mm}:{ss}
+          </div>
+        </div>
+        <div className="flex gap-3">
+          <Button
+            size="lg"
+            onClick={() => setRunning((r) => !r)}
+            className="rounded-full px-8"
+          >
+            {running ? <Pause className="size-4 mr-2" /> : <Play className="size-4 mr-2" />}
+            {running ? "Pause" : "Start"}
+          </Button>
+          <Button size="lg" variant="outline" onClick={reset} className="rounded-full">
+            <RotateCcw className="size-4" />
+          </Button>
+          <Button size="lg" variant="outline" onClick={exitDeep} className="rounded-full">
+            <X className="size-4 mr-2" /> Exit
+          </Button>
+        </div>
+      </div>
     </AppShell>
   );
 };
