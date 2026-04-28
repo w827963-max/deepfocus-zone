@@ -67,6 +67,7 @@ const SettingsPage = () => {
     setBusy(false);
     if (error) return toast.error(error.message);
     document.documentElement.classList.toggle("dark", form.theme === "dark");
+    try { localStorage.setItem("focushub-theme", form.theme); } catch {}
     await refreshProfile();
     toast.success("Settings saved");
   };
