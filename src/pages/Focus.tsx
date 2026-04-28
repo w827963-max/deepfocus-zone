@@ -27,13 +27,14 @@ const Focus = () => {
   const [volume, setVolume] = useState(50); // 0-100
   const [soundPaused, setSoundPaused] = useState(false);
   const intervalRef = useRef<number | null>(null);
-  const audioCtxRef = useRef<{ ctx: AudioContext; masterGain: GainNode; nodes: AudioScheduledSourceNode[] } | null>(null);
+  const audioCtxRef = useRef<{ ctx: AudioContext; masterGain: GainNode; nodes: AudioScheduledSourceNode[]; timers: number[] } | null>(null);
 
   const effectiveGain = (vol: number) => (muted ? 0 : (vol / 100) * 0.4);
 
   const stopSound = () => {
     if (audioCtxRef.current) {
-      const { ctx, nodes } = audioCtxRef.current;
+      const { ctx, nodes, timers } = audioCtxRef.current;
+      timers.forEach((t) => clearInterval(t));
       nodes.forEach((n) => { try { n.stop(); } catch {} });
       ctx.close().catch(() => {});
       audioCtxRef.current = null;
@@ -68,29 +69,72 @@ const Focus = () => {
       src.start();
       nodes.push(src);
     } else if (id === "rain") {
-      // Filtered pink-ish noise + occasional droplets via lowpass modulation
-      const src = ctx.createBufferSource();
-      src.buffer = buildNoiseBuffer(ctx, 4);
-      src.loop = true;
-      const lp = ctx.createBiquadFilter();
-      lp.type = "lowpass";
-      lp.frequency.value = 1800;
-      lp.Q.value = 0.7;
-      const hp = ctx.createBiquadFilter();
-      hp.type = "highpass";
-      hp.frequency.value = 200;
-      src.connect(hp).connect(lp).connect(masterGain);
-      src.start();
-      nodes.push(src);
+      // ===== Layer 1: continuous shower (filtered noise bed) =====
+      const bed = ctx.createBufferSource();
+      bed.buffer = buildNoiseBuffer(ctx, 4);
+      bed.loop = true;
+      const bedHp = ctx.createBiquadFilter();
+      bedHp.type = "highpass";
+      bedHp.frequency.value = 400;
+      const bedLp = ctx.createBiquadFilter();
+      bedLp.type = "lowpass";
+      bedLp.frequency.value = 4500;
+      const bedGain = ctx.createGain();
+      bedGain.gain.value = 0.35;
+      bed.connect(bedHp).connect(bedLp).connect(bedGain).connect(masterGain);
+      bed.start();
+      nodes.push(bed);
 
-      // Subtle wobble for realism
+      // Subtle wind wobble
       const lfo = ctx.createOscillator();
       const lfoGain = ctx.createGain();
-      lfo.frequency.value = 0.3;
-      lfoGain.gain.value = 400;
-      lfo.connect(lfoGain).connect(lp.frequency);
+      lfo.frequency.value = 0.25;
+      lfoGain.gain.value = 600;
+      lfo.connect(lfoGain).connect(bedLp.frequency);
       lfo.start();
       nodes.push(lfo);
+
+      // ===== Layer 2: distinct droplet impacts =====
+      // Reusable short noise buffer for drop transients
+      const dropBuf = ctx.createBuffer(1, ctx.sampleRate * 0.15, ctx.sampleRate);
+      const dropData = dropBuf.getChannelData(0);
+      for (let i = 0; i < dropData.length; i++) dropData[i] = Math.random() * 2 - 1;
+
+      const spawnDrop = () => {
+        if (!audioCtxRef.current) return;
+        const now = ctx.currentTime;
+        const src = ctx.createBufferSource();
+        src.buffer = dropBuf;
+        // Vary pitch per drop for size variation
+        src.playbackRate.value = 0.7 + Math.random() * 1.6;
+
+        const bp = ctx.createBiquadFilter();
+        bp.type = "bandpass";
+        bp.frequency.value = 1500 + Math.random() * 3500;
+        bp.Q.value = 4 + Math.random() * 6;
+
+        const g = ctx.createGain();
+        const peak = 0.25 + Math.random() * 0.55;
+        const dur = 0.05 + Math.random() * 0.12;
+        g.gain.setValueAtTime(0.0001, now);
+        g.gain.exponentialRampToValueAtTime(peak, now + 0.003);
+        g.gain.exponentialRampToValueAtTime(0.0001, now + dur);
+
+        src.connect(bp).connect(g).connect(masterGain);
+        src.start(now);
+        src.stop(now + dur + 0.02);
+      };
+
+      // Schedule a burst of drops every ~120ms (≈8 drops/sec on average,
+      // each tick spawns 0–3 to keep an organic patter)
+      const dropTimer = window.setInterval(() => {
+        const count = Math.random() < 0.85 ? 1 + Math.floor(Math.random() * 3) : 0;
+        for (let i = 0; i < count; i++) {
+          setTimeout(spawnDrop, Math.random() * 110);
+        }
+      }, 120);
+      audioCtxRef.current = { ctx, masterGain, nodes, timers: [dropTimer] };
+      return;
     } else if (id === "lofi") {
       // Soft warm pad: a few detuned sine oscillators forming a gentle chord (Am9)
       const freqs = [220, 261.63, 329.63, 493.88]; // A3, C4, E4, B4
@@ -125,7 +169,7 @@ const Focus = () => {
       nodes.push(noise);
     }
 
-    audioCtxRef.current = { ctx, masterGain, nodes };
+    audioCtxRef.current = { ctx, masterGain, nodes, timers: [] };
   };
 
   const togglePause = () => {
