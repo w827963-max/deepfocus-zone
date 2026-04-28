@@ -392,7 +392,7 @@ const Focus = () => {
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 md:gap-6">
-        <div ref={timerRef} className="lg:col-span-8">
+        <div className="lg:col-span-8">
           <SurfaceCard className="py-12">{TimerCore}</SurfaceCard>
         </div>
 
