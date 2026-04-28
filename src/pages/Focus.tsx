@@ -21,7 +21,6 @@ const Focus = () => {
   const [phase, setPhase] = useState<Phase>("focus");
   const [secondsLeft, setSecondsLeft] = useState(25 * 60);
   const [running, setRunning] = useState(false);
-  const [deepMode, setDeepMode] = useState(false);
   const [sound, setSound] = useState("none");
   const [muted, setMuted] = useState(false);
   const intervalRef = useRef<number | null>(null);
