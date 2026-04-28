@@ -333,7 +333,7 @@ const Focus = () => {
     </div>
   );
 
-  const timerRef = useRef<HTMLDivElement | null>(null);
+  
 
   const enterDeep = async () => {
     if (secondsLeft === 0) setSecondsLeft(focusMin * 60);
