@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { AppShell } from "@/components/focus/AppShell";
 import { FocusScoreCard } from "@/components/focus/FocusScoreCard";
 import { StudyTimeLogger } from "@/components/focus/StudyTimeLogger";
@@ -5,8 +6,12 @@ import { ScreenTimeCard } from "@/components/focus/ScreenTimeCard";
 import { StreakCard } from "@/components/focus/StreakCard";
 import { ProgressChart } from "@/components/focus/ProgressChart";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { useFocusStore } from "@/hooks/useFocusStore";
-import { Sparkles } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import { Sparkles, Loader2 } from "lucide-react";
 
 const greeting = () => {
   const h = new Date().getHours();
