@@ -136,7 +136,7 @@ const Focus = () => {
         title="Run a session"
         description="Pomodoro, deep focus mode, and ambient sounds to anchor your attention."
         action={
-          <Button onClick={() => setDeepMode(true)} className="rounded-full bg-graphite hover:bg-graphite/90">
+          <Button onClick={enterDeep} className="rounded-full bg-graphite hover:bg-graphite/90">
             <Maximize2 className="size-4 mr-2" /> Deep Focus Mode
           </Button>
         }
