@@ -37,7 +37,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const loadProfile = async (userId: string) => {
     const { data } = await supabase.from("profiles").select("*").eq("id", userId).maybeSingle();
     setProfile(data as Profile | null);
+    const theme = (data as Profile | null)?.theme === "dark" ? "dark" : "light";
+    document.documentElement.classList.toggle("dark", theme === "dark");
+    try { localStorage.setItem("focushub-theme", theme); } catch {}
   };
+
+  useEffect(() => {
+    // Apply cached theme immediately to avoid a flash before profile loads
+    try {
+      const cached = localStorage.getItem("focushub-theme");
+      if (cached === "dark") document.documentElement.classList.add("dark");
+    } catch {}
+  }, []);
 
   useEffect(() => {
     const { data: sub } = supabase.auth.onAuthStateChange((_event, s) => {
