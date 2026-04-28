@@ -23,9 +23,13 @@ const Focus = () => {
   const [running, setRunning] = useState(false);
   const [sound, setSound] = useState("none");
   const [muted, setMuted] = useState(false);
+  const [volume, setVolume] = useState(50); // 0-100
+  const [soundPaused, setSoundPaused] = useState(false);
   const intervalRef = useRef<number | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const noiseRef = useRef<{ ctx: AudioContext; gain: GainNode; src: AudioBufferSourceNode } | null>(null);
+
+  const effectiveGain = (vol: number) => (muted ? 0 : (vol / 100) * 0.4);
 
   const stopSound = () => {
     if (audioRef.current) {
