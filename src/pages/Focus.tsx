@@ -111,7 +111,9 @@ const Focus = () => {
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 md:gap-6">
-        <SurfaceCard className="lg:col-span-8 py-12">{TimerCore}</SurfaceCard>
+        <div ref={timerRef} className="lg:col-span-8">
+          <SurfaceCard className="py-12">{TimerCore}</SurfaceCard>
+        </div>
 
         <div className="lg:col-span-4 flex flex-col gap-5 md:gap-6">
           <SurfaceCard>
