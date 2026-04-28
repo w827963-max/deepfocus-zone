@@ -136,37 +136,119 @@ const Focus = () => {
       audioCtxRef.current = { ctx, masterGain, nodes, timers: [dropTimer] };
       return;
     } else if (id === "lofi") {
-      // Soft warm pad: a few detuned sine oscillators forming a gentle chord (Am9)
-      const freqs = [220, 261.63, 329.63, 493.88]; // A3, C4, E4, B4
-      freqs.forEach((f, i) => {
+      // ===== Mellow lo-fi loop: chord progression + soft beat + vinyl crackle =====
+
+      // Master lowpass to give that warm "tape" feel
+      const warmth = ctx.createBiquadFilter();
+      warmth.type = "lowpass";
+      warmth.frequency.value = 3200;
+      warmth.Q.value = 0.4;
+      warmth.connect(masterGain);
+
+      // --- Chord progression (Am7 - Fmaj7 - Cmaj7 - G) ---
+      const chords = [
+        [220.00, 261.63, 329.63, 392.00], // Am7
+        [174.61, 220.00, 261.63, 329.63], // Fmaj7
+        [196.00, 246.94, 329.63, 392.00], // Cmaj7
+        [196.00, 246.94, 293.66, 392.00], // G
+      ];
+      const chordGain = ctx.createGain();
+      chordGain.gain.value = 0.0;
+      chordGain.connect(warmth);
+
+      // Persistent oscillators per voice; we just retune them each chord change
+      const voices = chords[0].map((f) => {
         const osc = ctx.createOscillator();
-        osc.type = i === 0 ? "triangle" : "sine";
+        osc.type = "triangle";
         osc.frequency.value = f;
-        const g = ctx.createGain();
-        g.gain.value = 0.18;
-        // gentle vibrato
-        const lfo = ctx.createOscillator();
-        const lfoGain = ctx.createGain();
-        lfo.frequency.value = 0.15 + i * 0.05;
-        lfoGain.gain.value = 1.5;
-        lfo.connect(lfoGain).connect(osc.frequency);
-        lfo.start();
-        osc.connect(g).connect(masterGain);
+        // light detune for warmth
+        osc.detune.value = (Math.random() - 0.5) * 8;
+        osc.connect(chordGain);
         osc.start();
-        nodes.push(osc, lfo);
+        nodes.push(osc);
+        return osc;
       });
-      // Soft noise wash for vinyl texture
+
+      const beatSec = 2.0; // each chord lasts ~2s (slow, dreamy)
+      let chordIdx = 0;
+      const playChord = () => {
+        if (!audioCtxRef.current) return;
+        const now = ctx.currentTime;
+        const freqs = chords[chordIdx % chords.length];
+        voices.forEach((osc, i) => {
+          osc.frequency.cancelScheduledValues(now);
+          osc.frequency.linearRampToValueAtTime(freqs[i], now + 0.25);
+        });
+        // gentle envelope: swell in, hold, fade
+        chordGain.gain.cancelScheduledValues(now);
+        chordGain.gain.setValueAtTime(chordGain.gain.value, now);
+        chordGain.gain.linearRampToValueAtTime(0.18, now + 0.4);
+        chordGain.gain.linearRampToValueAtTime(0.12, now + beatSec - 0.2);
+        chordIdx++;
+      };
+      playChord();
+      const chordTimer = window.setInterval(playChord, beatSec * 1000);
+
+      // --- Soft kick on beat 1, hi-hat tick on every half-beat ---
+      const kickBuf = ctx.createBuffer(1, ctx.sampleRate * 0.3, ctx.sampleRate);
+      const kickData = kickBuf.getChannelData(0);
+      for (let i = 0; i < kickData.length; i++) kickData[i] = Math.random() * 2 - 1;
+
+      const playKick = () => {
+        if (!audioCtxRef.current) return;
+        const now = ctx.currentTime;
+        const osc = ctx.createOscillator();
+        osc.frequency.setValueAtTime(120, now);
+        osc.frequency.exponentialRampToValueAtTime(40, now + 0.18);
+        const g = ctx.createGain();
+        g.gain.setValueAtTime(0.0001, now);
+        g.gain.exponentialRampToValueAtTime(0.35, now + 0.01);
+        g.gain.exponentialRampToValueAtTime(0.0001, now + 0.25);
+        osc.connect(g).connect(warmth);
+        osc.start(now);
+        osc.stop(now + 0.3);
+      };
+
+      const playHat = () => {
+        if (!audioCtxRef.current) return;
+        const now = ctx.currentTime;
+        const src = ctx.createBufferSource();
+        src.buffer = kickBuf;
+        const hp = ctx.createBiquadFilter();
+        hp.type = "highpass";
+        hp.frequency.value = 7000;
+        const g = ctx.createGain();
+        g.gain.setValueAtTime(0.0001, now);
+        g.gain.exponentialRampToValueAtTime(0.06, now + 0.005);
+        g.gain.exponentialRampToValueAtTime(0.0001, now + 0.05);
+        src.connect(hp).connect(g).connect(masterGain);
+        src.start(now);
+        src.stop(now + 0.08);
+      };
+
+      // ~75 BPM feel: kick every 800ms, hat every 400ms
+      const kickTimer = window.setInterval(playKick, 800);
+      let hatStep = 0;
+      const hatTimer = window.setInterval(() => {
+        playHat();
+        hatStep++;
+      }, 400);
+
+      // --- Vinyl crackle bed ---
       const noise = ctx.createBufferSource();
       noise.buffer = buildNoiseBuffer(ctx, 3);
       noise.loop = true;
       const noiseGain = ctx.createGain();
-      noiseGain.gain.value = 0.04;
-      const noiseLp = ctx.createBiquadFilter();
-      noiseLp.type = "lowpass";
-      noiseLp.frequency.value = 3500;
-      noise.connect(noiseLp).connect(noiseGain).connect(masterGain);
+      noiseGain.gain.value = 0.025;
+      const noiseHp = ctx.createBiquadFilter();
+      noiseHp.type = "highpass";
+      noiseHp.frequency.value = 2000;
+      noise.connect(noiseHp).connect(noiseGain).connect(masterGain);
       noise.start();
       nodes.push(noise);
+
+      audioCtxRef.current = { ctx, masterGain, nodes, timers: [chordTimer, kickTimer, hatTimer] };
+      return;
     }
 
     audioCtxRef.current = { ctx, masterGain, nodes, timers: [] };
