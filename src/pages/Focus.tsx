@@ -27,78 +27,115 @@ const Focus = () => {
   const [volume, setVolume] = useState(50); // 0-100
   const [soundPaused, setSoundPaused] = useState(false);
   const intervalRef = useRef<number | null>(null);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const noiseRef = useRef<{ ctx: AudioContext; gain: GainNode; src: AudioBufferSourceNode } | null>(null);
+  const audioCtxRef = useRef<{ ctx: AudioContext; masterGain: GainNode; nodes: AudioScheduledSourceNode[] } | null>(null);
 
   const effectiveGain = (vol: number) => (muted ? 0 : (vol / 100) * 0.4);
 
   const stopSound = () => {
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.src = "";
-      audioRef.current = null;
-    }
-    if (noiseRef.current) {
-      try { noiseRef.current.src.stop(); } catch {}
-      noiseRef.current.ctx.close();
-      noiseRef.current = null;
+    if (audioCtxRef.current) {
+      const { ctx, nodes } = audioCtxRef.current;
+      nodes.forEach((n) => { try { n.stop(); } catch {} });
+      ctx.close().catch(() => {});
+      audioCtxRef.current = null;
     }
   };
 
-  const playSound = (id: string) => {
+  const buildNoiseBuffer = (ctx: AudioContext, seconds = 2) => {
+    const buf = ctx.createBuffer(1, seconds * ctx.sampleRate, ctx.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+    return buf;
+  };
+
+  const playSound = (id: SoundKind) => {
     stopSound();
     setSound(id);
     setSoundPaused(false);
     if (id === "none") return;
-    const entry = sounds.find((s) => s.id === id);
-    if (!entry || !entry.url) return;
 
-    if (entry.url === "synth:noise") {
-      const Ctx = window.AudioContext || (window as any).webkitAudioContext;
-      const ctx = new Ctx();
-      const bufferSize = 2 * ctx.sampleRate;
-      const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-      const data = buffer.getChannelData(0);
-      for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+    const Ctx = window.AudioContext || (window as any).webkitAudioContext;
+    const ctx: AudioContext = new Ctx();
+    const masterGain = ctx.createGain();
+    masterGain.gain.value = effectiveGain(volume);
+    masterGain.connect(ctx.destination);
+    const nodes: AudioScheduledSourceNode[] = [];
+
+    if (id === "noise") {
       const src = ctx.createBufferSource();
-      src.buffer = buffer;
+      src.buffer = buildNoiseBuffer(ctx);
       src.loop = true;
-      const gain = ctx.createGain();
-      gain.gain.value = effectiveGain(volume);
-      src.connect(gain).connect(ctx.destination);
+      src.connect(masterGain);
       src.start();
-      noiseRef.current = { ctx, gain, src };
-      return;
+      nodes.push(src);
+    } else if (id === "rain") {
+      // Filtered pink-ish noise + occasional droplets via lowpass modulation
+      const src = ctx.createBufferSource();
+      src.buffer = buildNoiseBuffer(ctx, 4);
+      src.loop = true;
+      const lp = ctx.createBiquadFilter();
+      lp.type = "lowpass";
+      lp.frequency.value = 1800;
+      lp.Q.value = 0.7;
+      const hp = ctx.createBiquadFilter();
+      hp.type = "highpass";
+      hp.frequency.value = 200;
+      src.connect(hp).connect(lp).connect(masterGain);
+      src.start();
+      nodes.push(src);
+
+      // Subtle wobble for realism
+      const lfo = ctx.createOscillator();
+      const lfoGain = ctx.createGain();
+      lfo.frequency.value = 0.3;
+      lfoGain.gain.value = 400;
+      lfo.connect(lfoGain).connect(lp.frequency);
+      lfo.start();
+      nodes.push(lfo);
+    } else if (id === "lofi") {
+      // Soft warm pad: a few detuned sine oscillators forming a gentle chord (Am9)
+      const freqs = [220, 261.63, 329.63, 493.88]; // A3, C4, E4, B4
+      freqs.forEach((f, i) => {
+        const osc = ctx.createOscillator();
+        osc.type = i === 0 ? "triangle" : "sine";
+        osc.frequency.value = f;
+        const g = ctx.createGain();
+        g.gain.value = 0.18;
+        // gentle vibrato
+        const lfo = ctx.createOscillator();
+        const lfoGain = ctx.createGain();
+        lfo.frequency.value = 0.15 + i * 0.05;
+        lfoGain.gain.value = 1.5;
+        lfo.connect(lfoGain).connect(osc.frequency);
+        lfo.start();
+        osc.connect(g).connect(masterGain);
+        osc.start();
+        nodes.push(osc, lfo);
+      });
+      // Soft noise wash for vinyl texture
+      const noise = ctx.createBufferSource();
+      noise.buffer = buildNoiseBuffer(ctx, 3);
+      noise.loop = true;
+      const noiseGain = ctx.createGain();
+      noiseGain.gain.value = 0.04;
+      const noiseLp = ctx.createBiquadFilter();
+      noiseLp.type = "lowpass";
+      noiseLp.frequency.value = 3500;
+      noise.connect(noiseLp).connect(noiseGain).connect(masterGain);
+      noise.start();
+      nodes.push(noise);
     }
 
-    const audio = new Audio(entry.url);
-    audio.loop = true;
-    audio.volume = volume / 100;
-    audio.muted = muted;
-    audioRef.current = audio;
-    audio.play().catch((err) => {
-      console.error("Audio play failed:", err);
-      toast.error("Couldn't start sound. Tap the button again.");
-    });
+    audioCtxRef.current = { ctx, masterGain, nodes };
   };
 
   const togglePause = () => {
-    if (sound === "none") return;
+    if (sound === "none" || !audioCtxRef.current) return;
+    const { ctx } = audioCtxRef.current;
     if (soundPaused) {
-      // resume
-      if (audioRef.current) {
-        audioRef.current.play().catch(() => {});
-      } else if (noiseRef.current) {
-        noiseRef.current.ctx.resume();
-      } else {
-        // noise was fully torn down — restart
-        playSound(sound);
-        return;
-      }
+      ctx.resume();
       setSoundPaused(false);
     } else {
-      if (audioRef.current) audioRef.current.pause();
-      if (noiseRef.current) noiseRef.current.ctx.suspend();
+      ctx.suspend();
       setSoundPaused(true);
     }
   };
@@ -111,12 +148,8 @@ const Focus = () => {
 
   // Apply volume / mute to active sound
   useEffect(() => {
-    if (audioRef.current) {
-      audioRef.current.muted = muted;
-      audioRef.current.volume = volume / 100;
-    }
-    if (noiseRef.current) {
-      noiseRef.current.gain.gain.value = effectiveGain(volume);
+    if (audioCtxRef.current) {
+      audioCtxRef.current.masterGain.gain.value = effectiveGain(volume);
     }
   }, [muted, volume]);
 
