@@ -9,10 +9,10 @@ import { toast } from "sonner";
 
 type Phase = "focus" | "break";
 const sounds = [
-  { id: "none", label: "Silence" },
-  { id: "lofi", label: "Lo-fi" },
-  { id: "rain", label: "Rain" },
-  { id: "noise", label: "White noise" },
+  { id: "none", label: "Silence", url: null as string | null },
+  { id: "lofi", label: "Lo-fi", url: "https://cdn.pixabay.com/audio/2022/05/27/audio_1808fbf07a.mp3" },
+  { id: "rain", label: "Rain", url: "https://cdn.pixabay.com/audio/2022/03/10/audio_2dde668ca0.mp3" },
+  { id: "noise", label: "White noise", url: "synth:noise" },
 ];
 
 const Focus = () => {
@@ -24,6 +24,64 @@ const Focus = () => {
   const [sound, setSound] = useState("none");
   const [muted, setMuted] = useState(false);
   const intervalRef = useRef<number | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const noiseRef = useRef<{ ctx: AudioContext; gain: GainNode; src: AudioBufferSourceNode } | null>(null);
+
+  const stopSound = () => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.src = "";
+      audioRef.current = null;
+    }
+    if (noiseRef.current) {
+      try { noiseRef.current.src.stop(); } catch {}
+      noiseRef.current.ctx.close();
+      noiseRef.current = null;
+    }
+  };
+
+  const playSound = (id: string) => {
+    stopSound();
+    setSound(id);
+    if (id === "none") return;
+    const entry = sounds.find((s) => s.id === id);
+    if (!entry || !entry.url) return;
+
+    if (entry.url === "synth:noise") {
+      const Ctx = window.AudioContext || (window as any).webkitAudioContext;
+      const ctx = new Ctx();
+      const bufferSize = 2 * ctx.sampleRate;
+      const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+      const src = ctx.createBufferSource();
+      src.buffer = buffer;
+      src.loop = true;
+      const gain = ctx.createGain();
+      gain.gain.value = muted ? 0 : 0.12;
+      src.connect(gain).connect(ctx.destination);
+      src.start();
+      noiseRef.current = { ctx, gain, src };
+      return;
+    }
+
+    const audio = new Audio(entry.url);
+    audio.loop = true;
+    audio.volume = 0.5;
+    audio.muted = muted;
+    audioRef.current = audio;
+    audio.play().catch((err) => {
+      console.error("Audio play failed:", err);
+      toast.error("Couldn't start sound. Tap the button again.");
+    });
+  };
+
+  useEffect(() => {
+    if (audioRef.current) audioRef.current.muted = muted;
+    if (noiseRef.current) noiseRef.current.gain.gain.value = muted ? 0 : 0.12;
+  }, [muted]);
+
+  useEffect(() => () => stopSound(), []);
 
   useEffect(() => {
     if (!running) return;
@@ -141,14 +199,14 @@ const Focus = () => {
               {sounds.map((s) => (
                 <button
                   key={s.id}
-                  onClick={() => setSound(s.id)}
+                  onClick={() => playSound(s.id)}
                   className={`px-4 py-3 rounded-2xl text-sm font-medium transition-colors ${sound === s.id ? "bg-moss-light text-moss" : "bg-stone text-graphite-light hover:text-graphite"}`}
                 >
                   {s.label}
                 </button>
               ))}
             </div>
-            <p className="text-xs text-graphite-light mt-4">Sounds are simulated in this preview.</p>
+            <p className="text-xs text-graphite-light mt-4">Tap a sound to play. Use the speaker icon to mute.</p>
           </SurfaceCard>
         </div>
       </div>
