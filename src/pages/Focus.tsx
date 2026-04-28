@@ -199,14 +199,14 @@ const Focus = () => {
               {sounds.map((s) => (
                 <button
                   key={s.id}
-                  onClick={() => setSound(s.id)}
+                  onClick={() => playSound(s.id)}
                   className={`px-4 py-3 rounded-2xl text-sm font-medium transition-colors ${sound === s.id ? "bg-moss-light text-moss" : "bg-stone text-graphite-light hover:text-graphite"}`}
                 >
                   {s.label}
                 </button>
               ))}
             </div>
-            <p className="text-xs text-graphite-light mt-4">Sounds are simulated in this preview.</p>
+            <p className="text-xs text-graphite-light mt-4">Tap a sound to play. Use the speaker icon to mute.</p>
           </SurfaceCard>
         </div>
       </div>
