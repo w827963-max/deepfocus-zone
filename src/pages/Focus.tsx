@@ -47,6 +47,7 @@ const Focus = () => {
   const playSound = (id: string) => {
     stopSound();
     setSound(id);
+    setSoundPaused(false);
     if (id === "none") return;
     const entry = sounds.find((s) => s.id === id);
     if (!entry || !entry.url) return;
@@ -62,7 +63,7 @@ const Focus = () => {
       src.buffer = buffer;
       src.loop = true;
       const gain = ctx.createGain();
-      gain.gain.value = muted ? 0 : 0.12;
+      gain.gain.value = effectiveGain(volume);
       src.connect(gain).connect(ctx.destination);
       src.start();
       noiseRef.current = { ctx, gain, src };
@@ -71,7 +72,7 @@ const Focus = () => {
 
     const audio = new Audio(entry.url);
     audio.loop = true;
-    audio.volume = 0.5;
+    audio.volume = volume / 100;
     audio.muted = muted;
     audioRef.current = audio;
     audio.play().catch((err) => {
@@ -80,10 +81,43 @@ const Focus = () => {
     });
   };
 
+  const togglePause = () => {
+    if (sound === "none") return;
+    if (soundPaused) {
+      // resume
+      if (audioRef.current) {
+        audioRef.current.play().catch(() => {});
+      } else if (noiseRef.current) {
+        noiseRef.current.ctx.resume();
+      } else {
+        // noise was fully torn down — restart
+        playSound(sound);
+        return;
+      }
+      setSoundPaused(false);
+    } else {
+      if (audioRef.current) audioRef.current.pause();
+      if (noiseRef.current) noiseRef.current.ctx.suspend();
+      setSoundPaused(true);
+    }
+  };
+
+  const closeSoundPlayer = () => {
+    stopSound();
+    setSound("none");
+    setSoundPaused(false);
+  };
+
+  // Apply volume / mute to active sound
   useEffect(() => {
-    if (audioRef.current) audioRef.current.muted = muted;
-    if (noiseRef.current) noiseRef.current.gain.gain.value = muted ? 0 : 0.12;
-  }, [muted]);
+    if (audioRef.current) {
+      audioRef.current.muted = muted;
+      audioRef.current.volume = volume / 100;
+    }
+    if (noiseRef.current) {
+      noiseRef.current.gain.gain.value = effectiveGain(volume);
+    }
+  }, [muted, volume]);
 
   useEffect(() => () => stopSound(), []);
 
