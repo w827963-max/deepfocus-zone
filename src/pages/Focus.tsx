@@ -26,6 +26,8 @@ const Focus = () => {
   const [muted, setMuted] = useState(false);
   const [volume, setVolume] = useState(50); // 0-100
   const [soundPaused, setSoundPaused] = useState(false);
+  const [deepMode, setDeepMode] = useState(false);
+  const deepRef = useRef<HTMLDivElement | null>(null);
   const intervalRef = useRef<number | null>(null);
   const audioCtxRef = useRef<{ ctx: AudioContext; masterGain: GainNode; nodes: AudioScheduledSourceNode[]; timers: number[] } | null>(null);
 
@@ -331,16 +333,50 @@ const Focus = () => {
     </div>
   );
 
-  const timerRef = useRef<HTMLDivElement | null>(null);
+  
 
-  const enterDeep = () => {
+  const enterDeep = async () => {
     if (secondsLeft === 0) setSecondsLeft(focusMin * 60);
+    setDeepMode(true);
     setRunning(true);
-    requestAnimationFrame(() => {
-      timerRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    // Wait for overlay to mount, then request fullscreen on it
+    requestAnimationFrame(async () => {
+      const el = deepRef.current;
+      if (!el) return;
+      try {
+        if (el.requestFullscreen) await el.requestFullscreen();
+        else if ((el as any).webkitRequestFullscreen) await (el as any).webkitRequestFullscreen();
+      } catch (err) {
+        console.warn("Fullscreen denied:", err);
+      }
     });
-    toast.success("Focus session started");
   };
+
+  const exitDeep = async () => {
+    setDeepMode(false);
+    if (document.fullscreenElement) {
+      try { await document.exitFullscreen(); } catch {}
+    }
+  };
+
+  // Sync state if user presses Esc to leave fullscreen
+  useEffect(() => {
+    const onChange = () => {
+      if (!document.fullscreenElement && deepMode) setDeepMode(false);
+    };
+    document.addEventListener("fullscreenchange", onChange);
+    return () => document.removeEventListener("fullscreenchange", onChange);
+  }, [deepMode]);
+
+  // Keyboard: Space to play/pause while in deep mode
+  useEffect(() => {
+    if (!deepMode) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === " ") { e.preventDefault(); setRunning((r) => !r); }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [deepMode]);
 
   return (
     <AppShell>
@@ -356,7 +392,7 @@ const Focus = () => {
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 md:gap-6">
-        <div ref={timerRef} className="lg:col-span-8">
+        <div className="lg:col-span-8">
           <SurfaceCard className="py-12">{TimerCore}</SurfaceCard>
         </div>
 
@@ -433,6 +469,37 @@ const Focus = () => {
           </div>
         </div>
       )}
+
+      {/* Deep Focus full-screen overlay — themed via design tokens (follows light/dark) */}
+      <div
+        ref={deepRef}
+        className={`${deepMode ? "fixed inset-0 z-[100] flex" : "hidden"} bg-background text-foreground flex-col items-center justify-center gap-12 p-6`}
+      >
+        <span className="text-[10px] tracking-[0.3em] uppercase text-muted-foreground">
+          Deep Focus · {phase === "focus" ? "Focus" : "Break"} · Space to pause · Esc to exit
+        </span>
+        <div className="relative">
+          <div className="font-serif-display text-[10rem] md:text-[14rem] tabular-nums leading-none text-foreground">
+            {mm}:{ss}
+          </div>
+        </div>
+        <div className="flex gap-3">
+          <Button
+            size="lg"
+            onClick={() => setRunning((r) => !r)}
+            className="rounded-full px-8"
+          >
+            {running ? <Pause className="size-4 mr-2" /> : <Play className="size-4 mr-2" />}
+            {running ? "Pause" : "Start"}
+          </Button>
+          <Button size="lg" variant="outline" onClick={reset} className="rounded-full">
+            <RotateCcw className="size-4" />
+          </Button>
+          <Button size="lg" variant="outline" onClick={exitDeep} className="rounded-full">
+            <X className="size-4 mr-2" /> Exit
+          </Button>
+        </div>
+      </div>
     </AppShell>
   );
 };
