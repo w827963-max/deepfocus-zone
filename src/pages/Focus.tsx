@@ -248,6 +248,42 @@ const Focus = () => {
           </SurfaceCard>
         </div>
       </div>
+
+      {sound !== "none" && (
+        <div className="fixed bottom-6 right-6 z-40 w-[300px] rounded-2xl border border-border bg-card/95 backdrop-blur-xl shadow-2xl p-4 animate-in fade-in slide-in-from-bottom-4">
+          <div className="flex items-center gap-3">
+            <div className="size-10 rounded-xl bg-moss-light text-moss flex items-center justify-center shrink-0">
+              <Music2 className="size-5" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-[10px] tracking-[0.2em] uppercase text-graphite-light">Now playing</div>
+              <div className="text-sm font-medium text-foreground truncate">
+                {sounds.find((s) => s.id === sound)?.label}
+              </div>
+            </div>
+            <Button size="icon" variant="ghost" onClick={closeSoundPlayer} className="rounded-full size-8 shrink-0">
+              <X className="size-4" />
+            </Button>
+          </div>
+
+          <div className="flex items-center gap-2 mt-4">
+            <Button size="icon" onClick={togglePause} className="rounded-full bg-graphite hover:bg-graphite/90 size-9 shrink-0">
+              {soundPaused ? <Play className="size-4" /> : <Pause className="size-4" />}
+            </Button>
+            <Button size="icon" variant="ghost" onClick={() => setMuted((m) => !m)} className="rounded-full size-9 shrink-0">
+              {muted || volume === 0 ? <VolumeX className="size-4" /> : <Volume2 className="size-4" />}
+            </Button>
+            <Slider
+              value={[muted ? 0 : volume]}
+              min={0}
+              max={100}
+              step={1}
+              onValueChange={(v) => { setVolume(v[0]); if (muted && v[0] > 0) setMuted(false); }}
+              className="flex-1"
+            />
+          </div>
+        </div>
+      )}
     </AppShell>
   );
 };
