@@ -67,6 +67,7 @@ const SettingsPage = () => {
     setBusy(false);
     if (error) return toast.error(error.message);
     document.documentElement.classList.toggle("dark", form.theme === "dark");
+    try { localStorage.setItem("focushub-theme", form.theme); } catch {}
     await refreshProfile();
     toast.success("Settings saved");
   };
@@ -182,10 +183,13 @@ const SettingsPage = () => {
               {(["light", "dark"] as const).map((t) => (
                 <button
                   key={t}
-                  onClick={() => setForm({ ...form, theme: t })}
+                  onClick={() => {
+                    setForm({ ...form, theme: t });
+                    document.documentElement.classList.toggle("dark", t === "dark");
+                  }}
                   className={`p-5 rounded-2xl border-2 text-left transition-colors ${form.theme === t ? "border-moss bg-moss-light" : "border-border bg-stone"}`}
                 >
-                  <div className={`h-16 rounded-xl mb-3 ${t === "light" ? "bg-surface border border-border" : "bg-graphite"}`} />
+                  <div className={`h-16 rounded-xl mb-3 ${t === "light" ? "bg-[hsl(0_0%_100%)] border border-border" : "bg-[hsl(36_8%_8%)] border border-border"}`} />
                   <p className="font-medium capitalize">{t}</p>
                 </button>
               ))}

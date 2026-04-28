@@ -64,24 +64,53 @@
   .dark {
     --background: 36 8% 8%;
     --foreground: 44 17% 95%;
+
     --card: 36 8% 11%;
     --card-foreground: 44 17% 95%;
+
     --popover: 36 8% 11%;
     --popover-foreground: 44 17% 95%;
+
     --primary: 44 17% 95%;
     --primary-foreground: 36 6% 22%;
+
     --secondary: 36 6% 17%;
     --secondary-foreground: 44 17% 95%;
+
     --muted: 36 6% 17%;
     --muted-foreground: 40 6% 65%;
+
     --accent: 130 13% 30%;
     --accent-foreground: 130 18% 92%;
+
     --destructive: 0 60% 45%;
     --destructive-foreground: 0 0% 100%;
+
     --border: 36 6% 20%;
     --input: 36 6% 20%;
     --ring: 130 13% 50%;
+
+    /* Brand tokens — flipped for dark */
+    --moss: 130 18% 55%;
+    --moss-light: 130 14% 20%;
+    --clay: 17 45% 65%;
+    --clay-light: 17 25% 22%;
+    --graphite: 44 17% 95%;        /* "graphite" is text/primary in this design — invert it */
+    --graphite-light: 40 6% 65%;
     --surface: 36 8% 11%;
+    --stone: 36 6% 15%;
+
+    --sidebar-background: 36 8% 11%;
+    --sidebar-foreground: 44 17% 95%;
+    --sidebar-primary: 130 18% 55%;
+    --sidebar-primary-foreground: 36 8% 8%;
+    --sidebar-accent: 130 14% 20%;
+    --sidebar-accent-foreground: 130 18% 80%;
+    --sidebar-border: 36 6% 20%;
+    --sidebar-ring: 130 13% 50%;
+
+    --shadow-soft: 0 8px 30px -12px hsl(0 0% 0% / 0.5);
+    --shadow-card: 0 4px 20px -8px hsl(0 0% 0% / 0.4);
   }
 }
 
