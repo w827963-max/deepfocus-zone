@@ -27,13 +27,14 @@ const Focus = () => {
   const [volume, setVolume] = useState(50); // 0-100
   const [soundPaused, setSoundPaused] = useState(false);
   const intervalRef = useRef<number | null>(null);
-  const audioCtxRef = useRef<{ ctx: AudioContext; masterGain: GainNode; nodes: AudioScheduledSourceNode[] } | null>(null);
+  const audioCtxRef = useRef<{ ctx: AudioContext; masterGain: GainNode; nodes: AudioScheduledSourceNode[]; timers: number[] } | null>(null);
 
   const effectiveGain = (vol: number) => (muted ? 0 : (vol / 100) * 0.4);
 
   const stopSound = () => {
     if (audioCtxRef.current) {
-      const { ctx, nodes } = audioCtxRef.current;
+      const { ctx, nodes, timers } = audioCtxRef.current;
+      timers.forEach((t) => clearInterval(t));
       nodes.forEach((n) => { try { n.stop(); } catch {} });
       ctx.close().catch(() => {});
       audioCtxRef.current = null;
