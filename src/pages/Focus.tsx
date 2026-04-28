@@ -169,7 +169,7 @@ const Focus = () => {
       nodes.push(noise);
     }
 
-    audioCtxRef.current = { ctx, masterGain, nodes };
+    audioCtxRef.current = { ctx, masterGain, nodes, timers: [] };
   };
 
   const togglePause = () => {
