@@ -22,11 +22,37 @@ const greeting = () => {
 
 const Index = () => {
   const { state, focusScore, todayDayIndex, logStudyHours, setScreenTime } = useFocusStore();
+  const { user, profile, refreshProfile } = useAuth();
   const date = new Date().toLocaleDateString(undefined, {
     weekday: "long",
     month: "long",
     day: "numeric",
   });
+
+  const emailHandle = user?.email?.split("@")[0] ?? "";
+  const needsName =
+    !!user &&
+    !!profile &&
+    (!profile.display_name?.trim() || profile.display_name.trim().toLowerCase() === emailHandle.toLowerCase());
+
+  const [nameInput, setNameInput] = useState("");
+  const [savingName, setSavingName] = useState(false);
+
+  const saveName = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user || !nameInput.trim()) return;
+    setSavingName(true);
+    const { error } = await supabase
+      .from("profiles")
+      .update({ display_name: nameInput.trim() })
+      .eq("id", user.id);
+    setSavingName(false);
+    if (error) return toast.error(error.message);
+    await refreshProfile();
+    toast.success("Nice to meet you!");
+  };
+
+  const displayName = profile?.display_name?.trim() || emailHandle || "there";
 
   return (
     <AppShell>
