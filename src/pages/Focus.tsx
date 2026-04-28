@@ -473,12 +473,17 @@ const Focus = () => {
       {/* Deep Focus full-screen overlay — themed via design tokens (follows light/dark) */}
       <div
         ref={deepRef}
-        className={`${deepMode ? "fixed inset-0 z-[100] flex" : "hidden"} bg-background text-foreground flex-col items-center justify-center gap-12 p-6`}
+        aria-hidden={!deepMode}
+        className={`fixed inset-0 z-[100] flex flex-col items-center justify-center gap-12 p-6 bg-background text-foreground transition-all duration-500 ease-out ${
+          deepMode
+            ? "opacity-100 scale-100 pointer-events-auto"
+            : "opacity-0 scale-[1.04] pointer-events-none"
+        }`}
       >
-        <span className="text-[10px] tracking-[0.3em] uppercase text-muted-foreground">
+        <span className={`text-[10px] tracking-[0.3em] uppercase text-muted-foreground transition-all duration-700 delay-150 ${deepMode ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-2"}`}>
           Deep Focus · {phase === "focus" ? "Focus" : "Break"} · Space to pause · Esc to exit
         </span>
-        <div className="relative">
+        <div className={`relative transition-all duration-700 delay-200 ease-out ${deepMode ? "opacity-100 scale-100" : "opacity-0 scale-90"}`}>
           <div className="font-serif-display text-[10rem] md:text-[14rem] tabular-nums leading-none text-foreground">
             {mm}:{ss}
           </div>
