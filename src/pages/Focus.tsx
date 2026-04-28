@@ -26,6 +26,8 @@ const Focus = () => {
   const [muted, setMuted] = useState(false);
   const [volume, setVolume] = useState(50); // 0-100
   const [soundPaused, setSoundPaused] = useState(false);
+  const [deepMode, setDeepMode] = useState(false);
+  const deepRef = useRef<HTMLDivElement | null>(null);
   const intervalRef = useRef<number | null>(null);
   const audioCtxRef = useRef<{ ctx: AudioContext; masterGain: GainNode; nodes: AudioScheduledSourceNode[]; timers: number[] } | null>(null);
 
