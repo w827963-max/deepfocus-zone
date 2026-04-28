@@ -488,7 +488,7 @@ const Focus = () => {
             {mm}:{ss}
           </div>
         </div>
-        <div className="flex gap-3">
+        <div className={`flex gap-3 transition-all duration-700 delay-300 ease-out ${deepMode ? "opacity-100 translate-y-0" : "opacity-0 translate-y-3"}`}>
           <Button
             size="lg"
             onClick={() => setRunning((r) => !r)}
